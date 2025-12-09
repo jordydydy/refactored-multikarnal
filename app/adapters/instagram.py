@@ -1,0 +1,54 @@
+import re
+from app.core.config import settings
+from app.adapters.base import BaseAdapter
+from app.adapters.utils import split_text_smartly, make_meta_request
+
+class InstagramAdapter(BaseAdapter):
+    def __init__(self):
+        self.version = "v18.0"
+        self.base_url = f"https://graph.instagram.com/{self.version}/{settings.INSTAGRAM_CHATBOT_ID}/messages"
+        self.token = settings.INSTAGRAM_PAGE_ACCESS_TOKEN
+
+    def _clean_id(self, user_id: str) -> str:
+        return user_id.replace('@instagram.com', '').strip()
+
+    def send_typing_on(self, recipient_id: str):
+        if not self.token: return
+        payload = {"recipient": {"id": self._clean_id(recipient_id)}, "sender_action": "typing_on"}
+        make_meta_request("POST", self.base_url, self.token, payload)
+
+    def send_typing_off(self, recipient_id: str):
+        if not self.token: return
+        payload = {"recipient": {"id": self._clean_id(recipient_id)}, "sender_action": "typing_off"}
+        make_meta_request("POST", self.base_url, self.token, payload)
+
+    def send_message(self, recipient_id: str, text: str, **kwargs):
+        if not self.token: return {"success": False}
+        
+        # IG tidak support markdown bold (**), jadi kita ubah ke plain text atau *italic*
+        text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
+        chunks = split_text_smartly(text, 1000)
+        
+        results = []
+        for chunk in chunks:
+            payload = {
+                "recipient": {"id": self._clean_id(recipient_id)},
+                "message": {"text": chunk}
+            }
+            res = make_meta_request("POST", self.base_url, self.token, payload)
+            results.append(res)
+            
+        return {"sent": True, "results": results}
+
+    def send_feedback_request(self, recipient_id: str, answer_id: int):
+        payload = {
+            "recipient": {"id": self._clean_id(recipient_id)},
+            "message": {
+                "text": "Apakah jawaban ini membantu?",
+                "quick_replies": [
+                    {"content_type": "text", "title": "Yes", "payload": f"good-{answer_id}"},
+                    {"content_type": "text", "title": "No", "payload": f"bad-{answer_id}"}
+                ]
+            }
+        }
+        return make_meta_request("POST", self.base_url, self.token, payload)
