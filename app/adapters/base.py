@@ -3,16 +3,16 @@ from typing import Any, Dict, Optional
 
 class BaseAdapter(ABC):
     @abstractmethod
-    def send_message(self, recipient_id: str, text: str, **kwargs) -> Dict[str, Any]:
+    async def send_message(self, recipient_id: str, text: str, **kwargs) -> Dict[str, Any]:
         pass
 
     @abstractmethod
-    def send_typing_on(self, recipient_id: str, message_id: Optional[str] = None):
+    async def send_typing_on(self, recipient_id: str, message_id: Optional[str] = None):
         pass
 
     @abstractmethod
-    def send_typing_off(self, recipient_id: str):
+    async def send_typing_off(self, recipient_id: str):
         pass
     
-    def send_feedback_request(self, recipient_id: str, answer_id: int) -> Dict[str, Any]:
+    async def send_feedback_request(self, recipient_id: str, answer_id: int) -> Dict[str, Any]:
         return {"sent": False, "reason": "Not implemented"}

@@ -56,7 +56,7 @@ class MessageOrchestrator:
                 if 'graph_message_id' in send_kwargs:
                     del send_kwargs['graph_message_id']
 
-        adapter.send_message(user_id, closing_text, **send_kwargs)
+        await adapter.send_message(user_id, closing_text, **send_kwargs)
 
     async def handle_feedback(self, msg: IncomingMessage):
         payload_str = msg.metadata.get("payload", "")
@@ -96,8 +96,10 @@ class MessageOrchestrator:
             meta = self.repo_msg.get_email_metadata(conversation_id) if conversation_id else None
             if meta: send_kwargs = meta
             else: send_kwargs = {"subject": "Re: Your Inquiry"}
-        adapter.send_message(user_id, answer, **send_kwargs)
-        if answer_id: adapter.send_feedback_request(user_id, answer_id)
+        
+        await adapter.send_message(user_id, answer, **send_kwargs)
+        if answer_id: 
+            await adapter.send_feedback_request(user_id, answer_id)
 
     async def process_message(self, msg: IncomingMessage):
         adapter = self.adapters.get(msg.platform)
@@ -105,7 +107,7 @@ class MessageOrchestrator:
 
         try:
             msg_id = msg.metadata.get("message_id") if msg.metadata else None
-            adapter.send_typing_on(msg.platform_unique_id, message_id=msg_id)
+            await adapter.send_typing_on(msg.platform_unique_id, message_id=msg_id)
         except Exception:
             pass
 
@@ -127,8 +129,8 @@ class MessageOrchestrator:
             logger.error(f"Critical error during chatbot processing: {e}")
             response = None
 
-        try:
-            adapter.send_typing_off(msg.platform_unique_id)
+        try: 
+            await adapter.send_typing_off(msg.platform_unique_id)
         except Exception: pass
 
         if not response or not response.answer:
@@ -147,12 +149,12 @@ class MessageOrchestrator:
                 meta = self.repo_msg.get_email_metadata(response.conversation_id or msg.conversation_id)
                 if meta: send_kwargs = meta
 
-        adapter.send_message(msg.platform_unique_id, response.answer, **send_kwargs)
+        await adapter.send_message(msg.platform_unique_id, response.answer, **send_kwargs)
 
         raw_data = response.raw.get("data", {}) if response.raw else {}
         answer_id = raw_data.get("answer_id")
         if answer_id:
-            adapter.send_feedback_request(msg.platform_unique_id, answer_id)
+            await adapter.send_feedback_request(msg.platform_unique_id, answer_id)
             
         if msg.platform == "email" and response.conversation_id and msg.metadata:
             current_thread_session = self.repo_msg.get_conversation_by_thread(msg.metadata.get("thread_key"))

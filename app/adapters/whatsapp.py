@@ -14,7 +14,7 @@ class WhatsAppAdapter(BaseAdapter):
         text = re.sub(r'~~(.*?)~~', r'~\1~', text)
         return text
 
-    def send_message(self, recipient_id: str, text: str, **kwargs):
+    async def send_message(self, recipient_id: str, text: str, **kwargs):
         if not self.token: return {"success": False, "error": "No token"}
 
         text = self._convert_markdown(text)
@@ -31,50 +31,38 @@ class WhatsAppAdapter(BaseAdapter):
             if kwargs.get("message_id"):
                 payload["context"] = {"message_id": kwargs["message_id"]}
 
-            res = make_meta_request("POST", self.base_url, self.token, payload)
+            res = await make_meta_request("POST", self.base_url, self.token, payload)
             results.append(res)
         
         return {"sent": True, "results": results}
 
-    def send_typing_on(self, recipient_id: str, message_id: str = None):
-        """
-        Menggabungkan 'mark as read' dan 'typing indicator' dalam satu request.
-        """
+    async def send_typing_on(self, recipient_id: str, message_id: str = None):
         if not self.token: return
         
+        # Kirim status 'read' jika ada message_id
         if message_id:
             payload = {
                 "messaging_product": "whatsapp",
                 "status": "read",
                 "message_id": message_id,
-                "typing_indicator": {
-                    "type": "text"
+                "typing_indicator":{
+                    "type":"text"
                 }
             }
-        else:
-            payload = {
-                "messaging_product": "whatsapp",
-                "to": recipient_id,
-                "type": "typing_indicator",
-                "typing_indicator": {
-                    "type": "typing_on"
-                }
-            }
+            await make_meta_request("POST", self.base_url, self.token, payload)
 
-        make_meta_request("POST", self.base_url, self.token, payload)
-
-    def send_typing_off(self, recipient_id: str):
+    async def send_typing_off(self, recipient_id: str):
         pass
 
-    def mark_as_read(self, message_id: str):
+    async def mark_as_read(self, message_id: str):
         payload = {
             "messaging_product": "whatsapp",
             "status": "read",
             "message_id": message_id
         }
-        make_meta_request("POST", self.base_url, self.token, payload)
+        await make_meta_request("POST", self.base_url, self.token, payload)
 
-    def send_feedback_request(self, recipient_id: str, answer_id: int):
+    async def send_feedback_request(self, recipient_id: str, answer_id: int):
         payload = {
             "messaging_product": "whatsapp",
             "to": recipient_id,
@@ -90,4 +78,4 @@ class WhatsAppAdapter(BaseAdapter):
                 }
             }
         }
-        return make_meta_request("POST", self.base_url, self.token, payload)
+        return await make_meta_request("POST", self.base_url, self.token, payload)

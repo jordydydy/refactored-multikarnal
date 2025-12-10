@@ -1,5 +1,5 @@
 import smtplib
-import requests
+import httpx
 import logging
 import time
 import re
@@ -17,10 +17,10 @@ logger = logging.getLogger("adapters.email")
 class EmailAdapter(BaseAdapter):
     _token_cache: Dict[str, Any] = {}
 
-    def send_typing_on(self, recipient_id: str, message_id: str = None):
+    async def send_typing_on(self, recipient_id: str, message_id: str = None):
         pass 
 
-    def send_typing_off(self, recipient_id: str):
+    async def send_typing_off(self, recipient_id: str):
         pass
 
     def _convert_markdown_to_html(self, text: str) -> str:
@@ -58,7 +58,7 @@ class EmailAdapter(BaseAdapter):
             logger.error(f"Azure Auth Exception: {e}")
             return None
 
-    def send_message(self, recipient_id: str, text: str, **kwargs):
+    async def send_message(self, recipient_id: str, text: str, **kwargs):
         subject = kwargs.get("subject", "Re: Your Inquiry")
         in_reply_to = kwargs.get("in_reply_to")
         references = kwargs.get("references")
@@ -73,11 +73,11 @@ class EmailAdapter(BaseAdapter):
         )
 
         if settings.EMAIL_PROVIDER == "azure_oauth2":
-            return self._send_via_graph(recipient_id, subject, formatted_body, graph_message_id)
+            return await self._send_via_graph(recipient_id, subject, formatted_body, graph_message_id)
         else:
             return self._send_via_smtp(recipient_id, subject, formatted_body, in_reply_to, references)
 
-    def _send_via_graph(self, to_email: str, subject: str, html_body: str, graph_message_id: str = None):
+    async def _send_via_graph(self, to_email: str, subject: str, html_body: str, graph_message_id: str = None):
         token = self._get_graph_token()
         if not token:
             return {"sent": False, "error": "Could not acquire Azure token"}
@@ -87,43 +87,44 @@ class EmailAdapter(BaseAdapter):
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
+        
+        async with httpx.AsyncClient(timeout=10) as client:
+            if graph_message_id:
+                logger.info(f"Replying to existing thread using Graph ID: {graph_message_id}")
+                url = f"https://graph.microsoft.com/v1.0/users/{user_id}/messages/{graph_message_id}/reply"
+                payload = {"comment": html_body}
+                try:
+                    response = await client.post(url, json=payload, headers=headers)
+                    if response.status_code == 202:
+                        return {"sent": True, "method": "azure_graph_reply"}
+                    else:
+                        logger.error(f"Graph Reply Failed ({response.status_code}): {response.text}")
+                        return {"sent": False, "error": f"Reply failed: {response.text}"}
+                except Exception as e:
+                    logger.error(f"Graph Reply Exception: {e}")
+                    return {"sent": False, "error": str(e)}
 
-        if graph_message_id:
-            logger.info(f"Replying to existing thread using Graph ID: {graph_message_id}")
-            url = f"https://graph.microsoft.com/v1.0/users/{user_id}/messages/{graph_message_id}/reply"
-            payload = {"comment": html_body}
+            url = f"https://graph.microsoft.com/v1.0/users/{user_id}/sendMail"
+            email_msg = {
+                "message": {
+                    "subject": subject,
+                    "body": {"contentType": "HTML", "content": html_body},
+                    "toRecipients": [{"emailAddress": {"address": to_email}}]
+                },
+                "saveToSentItems": "true"
+            }
+
             try:
-                response = requests.post(url, json=payload, headers=headers, timeout=10)
+                response = await client.post(url, json=email_msg, headers=headers)
                 if response.status_code == 202:
-                    return {"sent": True, "method": "azure_graph_reply"}
+                    logger.info(f"Email sent via Azure sendMail to {to_email}")
+                    return {"sent": True, "method": "azure_graph_send"}
                 else:
-                    logger.error(f"Graph Reply Failed ({response.status_code}): {response.text}")
-                    return {"sent": False, "error": f"Reply failed: {response.text}"}
+                    logger.error(f"Graph API Error {response.status_code}: {response.text}")
+                    return {"sent": False, "error": response.text}
             except Exception as e:
-                logger.error(f"Graph Reply Exception: {e}")
+                logger.error(f"Graph API Exception: {e}")
                 return {"sent": False, "error": str(e)}
-
-        url = f"https://graph.microsoft.com/v1.0/users/{user_id}/sendMail"
-        email_msg = {
-            "message": {
-                "subject": subject,
-                "body": {"contentType": "HTML", "content": html_body},
-                "toRecipients": [{"emailAddress": {"address": to_email}}]
-            },
-            "saveToSentItems": "true"
-        }
-
-        try:
-            response = requests.post(url, json=email_msg, headers=headers, timeout=10)
-            if response.status_code == 202:
-                logger.info(f"Email sent via Azure sendMail to {to_email}")
-                return {"sent": True, "method": "azure_graph_send"}
-            else:
-                logger.error(f"Graph API Error {response.status_code}: {response.text}")
-                return {"sent": False, "error": response.text}
-        except Exception as e:
-            logger.error(f"Graph API Exception: {e}")
-            return {"sent": False, "error": str(e)}
 
     def _send_via_smtp(self, to_email, subject, html_body, in_reply_to, references):
         try:

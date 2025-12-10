@@ -12,17 +12,17 @@ class InstagramAdapter(BaseAdapter):
     def _clean_id(self, user_id: str) -> str:
         return user_id.replace('@instagram.com', '').strip()
 
-    def send_typing_on(self, recipient_id: str, message_id: str = None):
+    async def send_typing_on(self, recipient_id: str, message_id: str = None):
         if not self.token: return
         payload = {"recipient": {"id": self._clean_id(recipient_id)}, "sender_action": "typing_on"}
-        make_meta_request("POST", self.base_url, self.token, payload)
+        await make_meta_request("POST", self.base_url, self.token, payload)
 
-    def send_typing_off(self, recipient_id: str):
+    async def send_typing_off(self, recipient_id: str):
         if not self.token: return
         payload = {"recipient": {"id": self._clean_id(recipient_id)}, "sender_action": "typing_off"}
-        make_meta_request("POST", self.base_url, self.token, payload)
+        await make_meta_request("POST", self.base_url, self.token, payload)
 
-    def send_message(self, recipient_id: str, text: str, **kwargs):
+    async def send_message(self, recipient_id: str, text: str, **kwargs):
         if not self.token: return {"success": False}
         
         text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
@@ -34,12 +34,12 @@ class InstagramAdapter(BaseAdapter):
                 "recipient": {"id": self._clean_id(recipient_id)},
                 "message": {"text": chunk}
             }
-            res = make_meta_request("POST", self.base_url, self.token, payload)
+            res = await make_meta_request("POST", self.base_url, self.token, payload)
             results.append(res)
             
         return {"sent": True, "results": results}
 
-    def send_feedback_request(self, recipient_id: str, answer_id: int):
+    async def send_feedback_request(self, recipient_id: str, answer_id: int):
         payload = {
             "recipient": {"id": self._clean_id(recipient_id)},
             "message": {
@@ -50,4 +50,4 @@ class InstagramAdapter(BaseAdapter):
                 ]
             }
         }
-        return make_meta_request("POST", self.base_url, self.token, payload)
+        return await make_meta_request("POST", self.base_url, self.token, payload)
