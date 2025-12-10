@@ -28,7 +28,6 @@ class WhatsAppAdapter(BaseAdapter):
                 "type": "text",
                 "text": {"body": chunk}
             }
-            # Support reply context jika ada
             if kwargs.get("message_id"):
                 payload["context"] = {"message_id": kwargs["message_id"]}
 
@@ -43,7 +42,6 @@ class WhatsAppAdapter(BaseAdapter):
         """
         if not self.token: return
         
-        # Jika ada message_id, kita bisa mark as read sekaligus typing
         if message_id:
             payload = {
                 "messaging_product": "whatsapp",
@@ -54,8 +52,6 @@ class WhatsAppAdapter(BaseAdapter):
                 }
             }
         else:
-            # Fallback (jarang terjadi di flow normal): Typing biasa tanpa read status
-            # Perhatikan: Endpoint messages biasa untuk typing butuh payload berbeda
             payload = {
                 "messaging_product": "whatsapp",
                 "to": recipient_id,
@@ -71,8 +67,6 @@ class WhatsAppAdapter(BaseAdapter):
         pass
 
     def mark_as_read(self, message_id: str):
-        # Fungsi ini mungkin redundant jika send_typing_on sudah handle read,
-        # tapi tetap disimpan untuk keperluan lain.
         payload = {
             "messaging_product": "whatsapp",
             "status": "read",

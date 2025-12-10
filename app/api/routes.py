@@ -9,8 +9,6 @@ import logging
 logger = logging.getLogger("api.routes")
 router = APIRouter()
 
-# --- Verifikasi Webhook (Meta Requirement) ---
-
 @router.get("/whatsapp/webhook")
 def verify_whatsapp(
     mode: str = Query(..., alias="hub.mode"),
@@ -31,8 +29,6 @@ def verify_instagram(
         return Response(content=challenge, media_type="text/plain")
     raise HTTPException(status_code=403, detail="Verification failed")
 
-# --- Ingestion Webhooks ---
-
 @router.post("/whatsapp/webhook")
 async def whatsapp_webhook(
     request: Request,
@@ -43,12 +39,10 @@ async def whatsapp_webhook(
     msg = parse_whatsapp_payload(data)
     
     if msg:
-        # Cek apakah ini feedback event (tombol Good/Bad diklik)
         if msg.metadata and msg.metadata.get("is_feedback"):
             logger.info(f"Feedback Event Received (WA): {msg.metadata['payload']}")
             bg_tasks.add_task(orchestrator.handle_feedback, msg)
         else:
-            # Pesan biasa
             bg_tasks.add_task(orchestrator.process_message, msg)
             
     return {"status": "ok"}
@@ -71,8 +65,6 @@ async def instagram_webhook(
             
     return {"status": "ok"}
 
-# --- DUMMY ENDPOINT (SOLUSI 404) ---
-
 @router.post("/api/send/reply")
 async def ignore_backend_callback(request: Request):
     """
@@ -81,8 +73,6 @@ async def ignore_backend_callback(request: Request):
     Kita mengandalkan Direct Response dari 'chatbot.py' untuk membalas user.
     """
     return {"status": "ignored"}
-
-# --- Internal Process Endpoint (Untuk Email Listener) ---
 
 @router.post("/api/messages/process")
 async def process_message_internal(

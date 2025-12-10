@@ -4,7 +4,6 @@ from html import unescape
 REGEX_MULTIPLE_NEWLINES = r'\n{3,}'
 
 def strip_html(html: str) -> str:
-    """Membersihkan tag HTML menjadi teks biasa."""
     if not html: return ""
     
     html = re.sub(r'<hr\s*/?>', '\n__\n', html, flags=re.IGNORECASE)
@@ -17,7 +16,6 @@ def strip_html(html: str) -> str:
     return html.strip()
 
 def strip_quoted_sections(text: str) -> str:
-    """Menghapus bagian reply/forward (e.g., 'On ... wrote:')."""
     if not text: return ""
     
     patterns = [
@@ -36,7 +34,6 @@ def strip_quoted_sections(text: str) -> str:
     return text.strip()
 
 def sanitize_email_body(text_plain: str, html: str, max_chars: int = 6000) -> str:
-    """Fungsi utama untuk mendapatkan body email yang bersih."""
     body = text_plain.strip() if text_plain else strip_html(html)
     
     body = strip_quoted_sections(body)

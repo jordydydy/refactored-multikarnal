@@ -61,7 +61,6 @@ class Settings(BaseSettings):
     
     @property
     def DATABASE_URL(self) -> str:
-        # Helper untuk koneksi string jika dibutuhkan library lain
         return f"postgresql://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")

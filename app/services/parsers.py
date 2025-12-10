@@ -3,7 +3,6 @@ from app.schemas.models import IncomingMessage
 from app.core.config import settings
 
 def parse_whatsapp_payload(data: Dict[str, Any]) -> Optional[IncomingMessage]:
-    """Ekstrak pesan dari JSON WhatsApp Cloud API."""
     try:
         entry = data.get("entry", [])[0]
         changes = entry.get("changes", [])[0]
@@ -14,9 +13,8 @@ def parse_whatsapp_payload(data: Dict[str, Any]) -> Optional[IncomingMessage]:
             
         message = value["messages"][0]
         sender_id = message.get("from")
-        msg_id = message.get("id") # [BARU] Ambil ID Pesan
+        msg_id = message.get("id") 
 
-        # Abaikan pesan dari diri sendiri
         if str(sender_id) == str(settings.WHATSAPP_PHONE_NUMBER_ID):
             return None
 
@@ -27,7 +25,6 @@ def parse_whatsapp_payload(data: Dict[str, Any]) -> Optional[IncomingMessage]:
                 platform_unique_id=sender_id,
                 query=message["text"]["body"],
                 platform="whatsapp",
-                # [BARU] Simpan di metadata
                 metadata={"phone": sender_id, "message_id": msg_id}
             )
             
@@ -47,7 +44,6 @@ def parse_whatsapp_payload(data: Dict[str, Any]) -> Optional[IncomingMessage]:
     return None
 
 def parse_instagram_payload(data: Dict[str, Any]) -> Optional[IncomingMessage]:
-    """Ekstrak pesan dari JSON Instagram Webhook."""
     try:
         entry = data.get("entry", [])[0]
         messaging = entry.get("messaging", [])[0]

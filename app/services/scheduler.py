@@ -6,14 +6,8 @@ from app.repositories.conversation import ConversationRepository
 logger = logging.getLogger("service.scheduler")
 
 async def run_scheduler():
-    """
-    Background task untuk menutup sesi idle.
-    [MODE TESTING CEPAT]
-    """
     logger.info("⏳ Session Timeout Scheduler Started...")
-    
-    repo_conv = ConversationRepository()
-    
+    repo_conv = ConversationRepository()    
     await asyncio.sleep(5)
 
     while True:

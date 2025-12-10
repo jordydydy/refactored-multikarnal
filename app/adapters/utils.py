@@ -4,7 +4,6 @@ import logging
 logger = logging.getLogger("adapters.utils")
 
 def split_text_smartly(text: str, max_length: int = 4096) -> list[str]:
-    """Memecah teks panjang tanpa memotong kata di tengah jalan."""
     if len(text) <= max_length:
         return [text]
 

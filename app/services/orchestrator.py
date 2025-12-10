@@ -103,7 +103,6 @@ class MessageOrchestrator:
         adapter = self.adapters.get(msg.platform)
         if not adapter: return
 
-        # [UPDATE] Kirim Typing Indicator + Message ID
         try:
             msg_id = msg.metadata.get("message_id") if msg.metadata else None
             adapter.send_typing_on(msg.platform_unique_id, message_id=msg_id)

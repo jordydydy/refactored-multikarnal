@@ -17,7 +17,6 @@ logger = logging.getLogger("adapters.email")
 class EmailAdapter(BaseAdapter):
     _token_cache: Dict[str, Any] = {}
 
-    # [UPDATE] Dummy implementation agar tidak error
     def send_typing_on(self, recipient_id: str, message_id: str = None):
         pass 
 

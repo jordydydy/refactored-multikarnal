@@ -9,13 +9,8 @@ logger = logging.getLogger("service.chatbot")
 
 class ChatbotClient:
     async def ask(self, query: str, conversation_id: str, platform: str, user_id: str) -> ChatbotResponse:
-        """
-        Mengirim pesan ke AI Backend secara asinkron (AsyncIO).
-        """
-        # Generate timestamp saat ini (UTC)
         start_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         
-        # Pastikan conversation_id tidak None agar log rapi
         safe_conv_id = conversation_id or ""
 
         payload = {
@@ -32,7 +27,6 @@ class ChatbotClient:
 
         url = settings.CHATBOT_URL
         
-        # [UPDATE] Menambahkan Conversation ID ke Log Debug
         logger.info(f"DEBUG: Mengirim ke {url} | Timestamp: {start_timestamp} | ConvID: {safe_conv_id}")
         
         try:

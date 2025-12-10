@@ -6,12 +6,6 @@ logger = logging.getLogger("repo.message")
 
 class MessageRepository:
     def is_processed(self, message_id: str, platform: str) -> bool:
-        """
-        Mengecek apakah pesan sudah diproses menggunakan Database Locking.
-        Return:
-            True  -> Pesan SUDAH ada (Duplikat / Sedang diproses) -> SKIP
-            False -> Pesan BARU (Berhasil dikunci oleh worker ini) -> PROSES
-        """
         try:
             with Database.get_connection() as conn:
                 with conn.cursor() as cursor:
@@ -25,9 +19,6 @@ class MessageRepository:
                         );
                     """)
                     
-                    # 2. ATOMIC LOCK: Coba Insert
-                    # Jika ID sudah ada, database akan melempar sinyal konflik (rowcount 0).
-                    # Tidak ada dua worker yang bisa sukses insert ID yang sama bersamaan.
                     cursor.execute(
                         """
                         INSERT INTO bkpm.processed_messages (message_id, platform)
@@ -37,17 +28,12 @@ class MessageRepository:
                         (message_id, platform)
                     )
                     
-                    # Jika rowcount > 0: Berhasil Insert -> Ini pesan baru -> Return False (Belum diproses)
-                    # Jika rowcount = 0: Gagal Insert -> Sudah ada -> Return True (Sudah diproses)
                     is_new_entry = cursor.rowcount > 0
                     conn.commit()
                     
                     return not is_new_entry 
 
         except Exception as e:
-            # [FAIL-SAFE]
-            # Jika DB error (koneksi putus dll), kita asumsikan True (Sudah diproses)
-            # agar tidak terjadi spamming / double reply sampai DB pulih.
             logger.error(f"DB Lock Error for {message_id}: {e}")
             return True 
 

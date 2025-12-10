@@ -6,7 +6,6 @@ from app.adapters.whatsapp import WhatsAppAdapter
 from app.adapters.instagram import InstagramAdapter
 from app.adapters.email.sender import EmailAdapter
 
-# Singleton Instances
 _wa_adapter = WhatsAppAdapter()
 _ig_adapter = InstagramAdapter()
 _email_adapter = EmailAdapter()

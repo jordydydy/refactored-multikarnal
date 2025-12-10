@@ -51,11 +51,7 @@ class ConversationRepository:
             logger.error(f"Error fetching latest conversation: {e}")
             return None
 
-    # [UPDATE] Filter Hari Ini & Cek History Chat
     def get_stale_sessions(self, minutes: int = 15) -> List[Tuple[str, str, str]]:
-        """
-        Mencari sesi WA/IG aktif HARI INI yang pesan terakhirnya sudah 'basi'.
-        """
         try:
             with Database.get_connection() as conn:
                 with conn.cursor() as cursor:

@@ -7,7 +7,6 @@ def setup_logging():
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
-    # Suppress noisy loggers if needed
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger("multikarnal")

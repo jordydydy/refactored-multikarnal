@@ -12,7 +12,6 @@ class InstagramAdapter(BaseAdapter):
     def _clean_id(self, user_id: str) -> str:
         return user_id.replace('@instagram.com', '').strip()
 
-    # [UPDATE] Signature match
     def send_typing_on(self, recipient_id: str, message_id: str = None):
         if not self.token: return
         payload = {"recipient": {"id": self._clean_id(recipient_id)}, "sender_action": "typing_on"}
