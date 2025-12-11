@@ -71,6 +71,7 @@ class ConversationRepository:
                             c.start_timestamp
                         ) < NOW() - INTERVAL '{minutes} minutes'
                         LIMIT 50
+                        FOR UPDATE SKIP LOCKED
                         """
                     )
                     rows = cursor.fetchall()
