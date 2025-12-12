@@ -8,10 +8,6 @@ logger = logging.getLogger("service.chatbot")
 
 class ChatbotClient:
     async def ask(self, query: str, conversation_id: str, platform: str, user_id: str) -> bool:
-        """
-        Mengirim payload ke Backend AI (Fire-and-Forget).
-        Return: True jika sukses push, False jika gagal.
-        """
         start_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         safe_conv_id = conversation_id or ""
 
