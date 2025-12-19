@@ -1,6 +1,7 @@
 import asyncio
 import httpx
 import uuid
+import hashlib
 from typing import Dict
 from app.schemas.models import IncomingMessage
 from app.repositories.conversation import ConversationRepository
@@ -126,95 +127,67 @@ class MessageOrchestrator:
             await adapter.send_feedback_request(user_id, answer_id)
 
     def _ensure_conversation_id(self, msg: IncomingMessage):
-        """
-        Determine conversation_id for the message
-        For Azure email: Use conversationId from metadata to link replies
-        For IMAP email: Use thread_key
-        For other platforms: Use active session or generate new
-        """
         if msg.platform == "email" and msg.metadata:
-            # Azure Office365 - use conversationId for threading
             if settings.EMAIL_PROVIDER == "azure_oauth2" and msg.metadata.get("conversation_id"):
                 azure_conv_id = msg.metadata.get("conversation_id")
-                
-                # Check if we already have this conversation in DB
                 existing_id = self.repo_msg.get_conversation_by_azure_thread(azure_conv_id)
                 if existing_id:
                     msg.conversation_id = existing_id
-                    logger.info(f"AZURE THREAD MATCH: Found existing session {existing_id}")
                     return
                 
-                # Generate deterministic UUID from Azure conversationId
                 msg.conversation_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, azure_conv_id))
-                logger.info(f"NEW AZURE THREAD: Generated ID {msg.conversation_id} from {azure_conv_id}")
                 return
             
-            # IMAP/Gmail - use thread_key (References/In-Reply-To)
-            elif msg.metadata.get("thread_key"):
-                thread_key = msg.metadata.get("thread_key")
+            thread_key = msg.metadata.get("thread_key")
+            if thread_key:
                 existing_id = self.repo_msg.get_conversation_by_thread(thread_key)
                 if existing_id:
                     msg.conversation_id = existing_id
-                    logger.info(f"IMAP THREAD MATCH: Found existing session {existing_id}")
                     return
-                
-                msg.conversation_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, thread_key))
-                logger.info(f"NEW IMAP THREAD: Generated ID {msg.conversation_id}")
-                return
-        
-        # WhatsApp/Instagram - check active session
-        if not msg.conversation_id and msg.platform != "email":
+
+            sender = msg.platform_unique_id.lower()
+            subject = msg.metadata.get("subject", "").lower().strip()
+            seed = f"{sender}|{subject}"
+            msg.conversation_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, seed))
+            logger.info(f"EMAIL FIRST THREAD: Generated deterministic ID {msg.conversation_id} for {sender}")
+            return
+
+        if not msg.conversation_id:
             msg.conversation_id = self.repo_conv.get_active_id(msg.platform_unique_id, msg.platform)
 
-        # Generate new ID if nothing found
         if not msg.conversation_id:
             msg.conversation_id = str(uuid.uuid4())
-            logger.info(f"GENERATED RANDOM ID: {msg.conversation_id}")
-
-    def _save_email_metadata(self, msg: IncomingMessage):
-        """Save email metadata for threading replies"""
-        if msg.platform != "email" or not msg.conversation_id or not msg.metadata:
-            return
-            
-        if settings.EMAIL_PROVIDER == "azure_oauth2":
-            # For Azure, save graph_message_id and azure conversation_id
-            self.repo_msg.save_email_metadata(
-                msg.conversation_id,
-                msg.metadata.get("subject", ""),
-                msg.metadata.get("graph_message_id", ""),  # This is what we reply to
-                "",  # No references in Azure
-                msg.metadata.get("conversation_id", "")  # Azure's conversationId for threading
-            )
-        else:
-            # For IMAP, save traditional email headers
-            self.repo_msg.save_email_metadata(
-                msg.conversation_id,
-                msg.metadata.get("subject", ""),
-                msg.metadata.get("in_reply_to", ""),
-                msg.metadata.get("references", ""),
-                msg.metadata.get("thread_key", "")
-            )
 
     async def process_message(self, msg: IncomingMessage):
         adapter = self.adapters.get(msg.platform)
         if not adapter: return
 
-        try:
-            msg_id = msg.metadata.get("message_id") if msg.metadata else None
-            await adapter.send_typing_on(msg.platform_unique_id, message_id=msg_id)
-        except Exception:
-            pass
-
-        if not msg.conversation_id:
-            self._ensure_conversation_id(msg)
-
+        self._ensure_conversation_id(msg)
         self._save_email_metadata(msg)
 
         success = await self.chatbot.ask(msg.query, msg.conversation_id, msg.platform, msg.platform_unique_id)
         
         if not success:
-            logger.error("Gagal push ke backend AI.")
-            try: 
-                await adapter.send_typing_off(msg.platform_unique_id)
-            except Exception: 
-                pass
+            try: await adapter.send_typing_off(msg.platform_unique_id)
+            except Exception: pass
+
+    def _save_email_metadata(self, msg: IncomingMessage):
+        if msg.platform != "email" or not msg.conversation_id or not msg.metadata:
+            return
+            
+        if settings.EMAIL_PROVIDER == "azure_oauth2":
+            self.repo_msg.save_email_metadata(
+                msg.conversation_id,
+                msg.metadata.get("subject", ""),
+                msg.metadata.get("graph_message_id", ""),
+                "",
+                msg.metadata.get("conversation_id", "")
+            )
+        else:
+            self.repo_msg.save_email_metadata(
+                msg.conversation_id,
+                msg.metadata.get("subject", ""),
+                msg.metadata.get("message_id", ""),
+                msg.metadata.get("references", ""),
+                msg.metadata.get("thread_key", "")
+            )
