@@ -53,7 +53,6 @@ class MessageRepository:
             return None
 
     def get_conversation_by_thread(self, thread_key: str) -> Optional[str]:
-        """Untuk IMAP/Gmail"""
         return self.get_conversation_by_azure_thread(thread_key)
 
     def save_email_metadata(self, conversation_id: str, subject: str, in_reply_to: str, references: str, thread_key: str):

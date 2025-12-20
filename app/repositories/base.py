@@ -12,7 +12,6 @@ class Database:
     def initialize(cls):
         if cls._pool is None:
             logger.info("Initializing Database Connection Pool...")
-            # Menambahkan keepalives agar koneksi tidak diputus firewall saat idle
             conn_args = {
                 "keepalives": 1,
                 "keepalives_idle": 30,
@@ -31,8 +30,7 @@ class Database:
                 min_size=1,
                 max_size=10,
                 timeout=30,
-                kwargs=conn_args, # Inject keepalives
-                # Memastikan koneksi dicek sebelum dipakai (reconnect otomatis jika mati)
+                kwargs=conn_args, 
                 check=ConnectionPool.check_connection 
             )
 

@@ -57,6 +57,8 @@ def _process_graph_message(user_id, msg, token):
         _mark_graph_read(user_id, graph_id, token)
         return
 
+    _mark_graph_read(user_id, graph_id, token)
+
     clean_body = _extract_graph_body(msg)
     sender_info = msg.get("from", {}).get("emailAddress", {})
     
@@ -68,8 +70,6 @@ def _process_graph_message(user_id, msg, token):
     }
 
     process_single_email(sender_info.get("address", ""), clean_body, metadata)
-    
-    _mark_graph_read(user_id, graph_id, token)
 
 def _extract_graph_body(msg):
     body_content = msg.get("body", {}).get("content", "")

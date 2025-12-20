@@ -28,7 +28,7 @@ def _setup_email_listener():
             daemon=True
         )
         email_thread.start()
-        logger.info("📧 Email Listener Thread Started")
+        logger.info("Email Listener Thread Started")
     elif is_listener_running:
         logger.warning("⚠️ Email Listener already running, skipping start.")
 

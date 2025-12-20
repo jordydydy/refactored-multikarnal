@@ -29,7 +29,6 @@ def split_text_smartly(text: str, max_length: int = 4096) -> list[str]:
     return chunks
 
 async def make_meta_request(method: str, url: str, token: str, payload: dict = None) -> dict:
-    """Helper asinkron untuk call API Meta (WA & IG) menggunakan httpx."""
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"

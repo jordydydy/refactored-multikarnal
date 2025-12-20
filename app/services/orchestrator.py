@@ -130,7 +130,6 @@ class MessageOrchestrator:
     def _ensure_conversation_id(self, msg: IncomingMessage):
         if msg.platform == "email" and msg.metadata:
             
-            # [LOGIKA AZURE]
             if settings.EMAIL_PROVIDER == "azure_oauth2":
                 azure_conv_id = msg.metadata.get("conversation_id")
                 
